@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>夢の花園 - Dream Garden Symphony</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kosugi+Rounded&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Kosugi Rounded', sans-serif;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 50%, #ff7675 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 5px solid rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: radial-gradient(ellipse at center, #ffeef8 0%, #ffe0f1 100%);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: #fff;
+            z-index: 10;
+            width: 90%;
+            max-width: 600px;
+        }
+        
+        #scoreContainer {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        #score, #level, #timeBonus {
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #combo {
+            font-size: 36px;
+            margin-top: 10px;
+            opacity: 0;
+            transition: all 0.3s;
+            transform: scale(0.8);
+        }
+        
+        #combo.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        #combo.mega {
+            animation: megaCombo 0.5s ease-out;
+        }
+        
+        @keyframes megaCombo {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+        
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        
+        #startScreen h1 {
+            font-size: 48px;
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+        
+        #startScreen p {
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        
+        #startButton {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        #startButton:hover {
+            transform: scale(1.1);
+            animation: none;
+        }
+        
+        .powerUp {
+            position: absolute;
+            font-size: 24px;
+            animation: powerUpFloat 2s ease-out forwards;
+            pointer-events: none;
+            z-index: 15;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        @keyframes powerUpFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+        }
+        
+        #feverMode {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
+        #feverMode.active {
+            animation: feverPulse 0.5s ease-out;
+        }
+        
+        @keyframes feverPulse {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        #progressBar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        #progressFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #feca57);
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="scoreContainer">
+            <div id="score">♪ 0</div>
+            <div id="level">Lv.1</div>
+            <div id="timeBonus">⏱ x1.0</div>
+        </div>
+        <div id="combo">COMBO x1</div>
+        <div id="progressBar">
+            <div id="progressFill"></div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="feverMode">FEVER TIME!</div>
+    
+    <div id="startScreen">
+        <h1>🌸 夢の花園 🌸</h1>
+        <p>
+            音楽と花が織りなす不思議な世界へようこそ！<br>
+            花をクリックして美しいメロディーを奏でましょう。<br>
+            同じ色の花を続けてクリックするとコンボボーナス！<br>
+            レベルアップでスピードアップ！フィーバータイムを狙え！
+        </p>
+        <button id="startButton">はじめる</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const levelEl = document.getElementById('level');
+        const timeBonusEl = document.getElementById('timeBonus');
+        const progressFill = document.getElementById('progressFill');
+        const feverModeEl = document.getElementById('feverMode');
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
+        
+        let score = 0;
+        let combo = 1;
+        let level = 1;
+        let experience = 0;
+        let experienceToNext = 100;
+        let lastColor = null;
+        let gameStarted = false;
+        let animationId;
+        let feverMode = false;
+        let feverTimer = 0;
+        let lastClickTime = Date.now();
+        let timeBonus = 1;
+        let gameSpeed = 1;
+        
+        // Audio context
+        let audioContext;
+        
+        // Musical notes
+        const notes = {
+            'C': 261.63,
+            'D': 293.66,
+            'E': 329.63,
+            'F': 349.23,
+            'G': 392.00,
+            'A': 440.00,
+            'B': 493.88,
+            'C2': 523.25
+        };
+        
+        // Flower types
+        const flowerTypes = [
+            { color: '#ff6b6b', note: 'C', name: '桜', points: 10 },
+            { color: '#4ecdc4', note: 'D', name: '水仙', points: 15 },
+            { color: '#ffe66d', note: 'E', name: 'ひまわり', points: 20 },
+            { color: '#a8e6cf', note: 'F', name: '紫陽花', points: 25 },
+            { color: '#ff8b94', note: 'G', name: 'チューリップ', points: 30 },
+            { color: '#c7ceea', note: 'A', name: 'ラベンダー', points: 35 },
+            { color: '#ffd3b6', note: 'B', name: 'コスモス', points: 40 },
+            { color: '#ffaaa5', note: 'C2', name: 'バラ', points: 50 }
+        ];
+        
+        // Special flowers
+        const specialFlowers = [
+            { color: '#FFD700', note: 'C2', name: '金の花', points: 100, special: true, emoji: '⭐' },
+            { color: '#E6E6FA', note: 'E', name: '虹の花', points: 200, special: true, emoji: '🌈' }
+        ];
+        
+        class Flower {
+            constructor(x, y, special = false) {
+                this.x = x;
+                this.y = y;
+                
+                if (special || (Math.random() < 0.05 && level > 2)) {
+                    this.type = specialFlowers[Math.floor(Math.random() * specialFlowers.length)];
+                    this.isSpecial = true;
+                } else {
+                    this.type = flowerTypes[Math.floor(Math.random() * flowerTypes.length)];
+                    this.isSpecial = false;
+                }
+                
+                this.size = 0;
+                this.targetSize = this.isSpecial ? 50 : (30 + Math.random() * 20);
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.02;
+                this.petals = this.isSpecial ? 12 : (6 + Math.floor(Math.random() * 3));
+                this.alive = true;
+                this.growing = true;
+                this.glowEffect = 0;
+                this.lifetime = this.isSpecial ? 4000 : (3000 - level * 100 + Math.random() * 2000);
+                this.createdAt = Date.now();
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+            
+            update() {
+                // 自動消滅のタイミングをレベルに応じて早める
+                if (this.alive && Date.now() - this.createdAt > this.lifetime / gameSpeed) {
+                    this.alive = false;
+                }
+                
+                if (this.growing && this.size < this.targetSize) {
+                    this.size += 3 * gameSpeed;
+                    if (this.size >= this.targetSize) {
+                        this.growing = false;
+                    }
+                } else if (!this.alive && this.size > 0) {
+                    this.size -= 5 * gameSpeed;
+                    if (this.size <= 0) {
+                        return false;
+                    }
+                }
+                
+                this.rotation += this.rotationSpeed * gameSpeed;
+                this.pulsePhase += 0.1 * gameSpeed;
+                
+                if (this.glowEffect > 0) {
+                    this.glowEffect -= 0.05;
+                }
+                
+                return true;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                let scale = 1;
+                if (this.isSpecial) {
+                    scale = 1 + Math.sin(this.pulsePhase) * 0.1;
+                    ctx.scale(scale, scale);
+                }
+                
+                if (this.glowEffect > 0 || this.isSpecial) {
+                    ctx.shadowBlur = this.isSpecial ? 40 : (30 * this.glowEffect);
+                    ctx.shadowColor = this.type.color;
+                }
+                
+                for (let i = 0; i < this.petals; i++) {
+                    const angle = (Math.PI * 2 / this.petals) * i;
+                    ctx.save();
+                    ctx.rotate(angle);
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(0, -this.size * 0.5, this.size * 0.3, this.size * 0.6, 0, 0, Math.PI * 2);
+                    
+                    if (this.isSpecial) {
+                        const gradient = ctx.createRadialGradient(0, -this.size * 0.5, 0, 0, -this.size * 0.5, this.size * 0.6);
+                        gradient.addColorStop(0, '#fff');
+                        gradient.addColorStop(1, this.type.color);
+                        ctx.fillStyle = gradient;
+                    } else {
+                        ctx.fillStyle = this.type.color;
+                    }
+                    
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                }
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size * 0.3, 0, Math.PI * 2);
+                ctx.fillStyle = this.isSpecial ? this.type.color : '#fff';
+                ctx.fill();
+                
+                if (this.isSpecial && this.size > 30) {
+                    ctx.font = `${this.size * 0.4}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.type.emoji, 0, 0);
+                } else if (this.size > 20) {
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(-this.size * 0.1, -this.size * 0.05, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.size * 0.1, -this.size * 0.05, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(0, this.size * 0.05, this.size * 0.15, 0, Math.PI);
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+            
+            checkClick(mouseX, mouseY) {
+                const dx = mouseX - this.x;
+                const dy = mouseY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return distance < this.size;
+            }
+            
+            playSound() {
+                if (!audioContext) return;
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = this.isSpecial ? 'triangle' : 'sine';
+                oscillator.frequency.setValueAtTime(notes[this.type.note], audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 1);
+                
+                this.glowEffect = 1;
+            }
+        }
+        
+        class Particle {
+            constructor(x, y, color, size = 1) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10 * size;
+                this.vy = (Math.random() - 0.5) * 10 * size - 5;
+                this.color = color;
+                this.size = (Math.random() * 10 + 5) * size;
+                this.life = 1;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.3;
+                this.life -= 0.02;
+                this.size *= 0.98;
+                
+                return this.life > 0;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        
+        let flowers = [];
+        let particles = [];
+        let backgroundStars = [];
+        
+        for (let i = 0; i < 50; i++) {
+            backgroundStars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 3,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+        
+        function createFlower() {
+            const margin = 50;
+            const x = margin + Math.random() * (canvas.width - margin * 2);
+            const y = margin + Math.random() * (canvas.height - margin * 2);
+            
+            let tooClose = false;
+            for (const flower of flowers) {
+                const dx = flower.x - x;
+                const dy = flower.y - y;
+                if (Math.sqrt(dx * dx + dy * dy) < 80) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            
+            if (!tooClose) {
+                flowers.push(new Flower(x, y));
+            }
+        }
+        
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+        
+        function showPowerUp(text, x, y) {
+            const el = document.createElement('div');
+            el.className = 'powerUp';
+            el.textContent = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+            
+            setTimeout(() => {
+                document.body.removeChild(el);
+            }, 2000);
+        }
+        
+        function updateScore(points) {
+            const actualPoints = Math.floor(points * combo * timeBonus);
+            score += actualPoints;
+            experience += actualPoints;
+            
+            scoreEl.textContent = `♪ ${score}`;
+            
+            if (experience >= experienceToNext) {
+                levelUp();
+            }
+            
+            const progress = (experience / experienceToNext) * 100;
+            progressFill.style.width = progress + '%';
+            
+            if (combo > 1) {
+                comboEl.textContent = `COMBO x${combo}`;
+                comboEl.classList.add('show');
+                if (combo >= 10) {
+                    comboEl.classList.add('mega');
+                }
+            } else {
+                comboEl.classList.remove('show', 'mega');
+            }
+            
+            if (combo >= 20 && !feverMode) {
+                activateFeverMode();
+            }
+        }
+        
+        function levelUp() {
+            level++;
+            experience = experience - experienceToNext;
+            experienceToNext = Math.floor(experienceToNext * 1.5);
+            levelEl.textContent = `Lv.${level}`;
+            gameSpeed = 1 + (level - 1) * 0.2; // スピードアップを強化
+            
+            const rect = canvas.getBoundingClientRect();
+            showPowerUp(`LEVEL UP! Lv.${level}`, rect.left + canvas.width / 2, rect.top + canvas.height / 2);
+            
+            // レベルアップボーナス
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => createFlower(), i * 100);
+            }
+        }
+        
+        function activateFeverMode() {
+            feverMode = true;
+            feverTimer = 300;
+            feverModeEl.classList.add('active');
+            
+            setTimeout(() => {
+                feverModeEl.classList.remove('active');
+            }, 500);
+            
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const x = 100 + Math.random() * (canvas.width - 200);
+                    const y = 100 + Math.random() * (canvas.height - 200);
+                    flowers.push(new Flower(x, y, true));
+                }, i * 200);
+            }
+        }
+        
+        function updateTimeBonus() {
+            const now = Date.now();
+            const timeSinceLastClick = now - lastClickTime;
+            
+            if (timeSinceLastClick < 1000) {
+                timeBonus = Math.min(timeBonus + 0.1, 3);
+            } else {
+                timeBonus = Math.max(timeBonus - 0.05, 1);
+            }
+            
+            timeBonusEl.textContent = `⏱ x${timeBonus.toFixed(1)}`;
+        }
+        
+        function drawBackground() {
+            if (feverMode) {
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 0,
+                    canvas.width / 2, canvas.height / 2, canvas.width / 2
+                );
+                const hue = (Date.now() / 20) % 360;
+                gradient.addColorStop(0, `hsla(${hue}, 100%, 80%, 0.3)`);
+                gradient.addColorStop(1, `hsla(${hue + 60}, 100%, 70%, 0.3)`);
+                ctx.fillStyle = gradient;
+            } else {
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 0,
+                    canvas.width / 2, canvas.height / 2, canvas.width / 2
+                );
+                gradient.addColorStop(0, 'rgba(255, 238, 248, 0.3)');
+                gradient.addColorStop(1, 'rgba(255, 224, 241, 0.3)');
+                ctx.fillStyle = gradient;
+            }
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            backgroundStars.forEach(star => {
+                star.twinkle += 0.05;
+                const alpha = (Math.sin(star.twinkle) + 1) / 2 * 0.6;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = feverMode ? '#FFD700' : '#fff';
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size * (feverMode ? 1.5 : 1), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+        
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBackground();
+            
+            if (feverMode) {
+                feverTimer--;
+                if (feverTimer <= 0) {
+                    feverMode = false;
+                }
+            }
+            
+            updateTimeBonus();
+            
+            // 花の更新と描画
+            flowers = flowers.filter(flower => {
+                const alive = flower.update();
+                if (alive) {
+                    flower.draw();
+                }
+                return alive;
+            });
+            
+            // パーティクルの更新と描画
+            particles = particles.filter(particle => {
+                const alive = particle.update();
+                if (alive) {
+                    particle.draw();
+                }
+                return alive;
+            });
+            
+            // レベルに応じて花の生成を調整
+            const maxFlowers = Math.min(15 + level * 2, 30); // 最大30個まで
+            const spawnRate = feverMode ? 0.2 : (0.05 + level * 0.01);
+            
+            if (flowers.length < maxFlowers && Math.random() < spawnRate) {
+                createFlower();
+            }
+            
+            // 最低限の花を保証
+            if (flowers.length < 5) {
+                for (let i = 0; i < 3; i++) {
+                    createFlower();
+                }
+            }
+            
+            if (gameStarted) {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (!gameStarted) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            let hitFlower = false;
+            
+            for (let i = flowers.length - 1; i >= 0; i--) {
+                const flower = flowers[i];
+                if (flower.alive && flower.checkClick(mouseX, mouseY)) {
+                    flower.playSound();
+                    flower.alive = false;
+                    hitFlower = true;
+                    
+                    if (lastColor === flower.type.color) {
+                        combo++;
+                    } else {
+                        combo = 1;
+                    }
+                    lastColor = flower.type.color;
+                    
+                    updateScore(flower.type.points);
+                    
+                    const particleCount = flower.isSpecial ? 40 : 20;
+                    createParticles(flower.x, flower.y, flower.type.color, particleCount);
+                    
+                    if (flower.isSpecial) {
+                        showPowerUp(`+${flower.type.points * combo}!`, e.clientX, e.clientY);
+                    }
+                    
+                    lastClickTime = Date.now();
+                    break;
+                }
+            }
+            
+            if (!hitFlower) {
+                combo = 1;
+                timeBonus = 1;
+            }
+        });
+        
+        startButton.addEventListener('click', () => {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            startScreen.style.display = 'none';
+            gameStarted = true;
+            
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => createFlower(), i * 100);
+            }
+            
+            gameLoop();
+        });
+        
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>
