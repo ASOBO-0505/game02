@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>夢の花園 - Dream Garden Symphony</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Kosugi+Rounded&display=swap');
@@ -11,6 +11,8 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
         
         body {
@@ -21,20 +23,27 @@
             position: relative;
         }
         
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
         #gameCanvas {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 5px solid rgba(255, 255, 255, 0.8);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             background: radial-gradient(ellipse at center, #ffeef8 0%, #ffe0f1 100%);
+            max-width: 100%;
+            max-height: 100%;
         }
         
         #ui {
             position: absolute;
-            top: 20px;
+            top: 10px;
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
@@ -48,21 +57,44 @@
             display: flex;
             justify-content: space-around;
             align-items: center;
-            gap: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         
-        #score, #level, #timeBonus {
-            font-size: 24px;
+        #score, #level, #timeBonus, #timer {
+            font-size: 18px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
             background: rgba(255, 255, 255, 0.2);
-            padding: 10px 20px;
+            padding: 8px 15px;
             border-radius: 50px;
             backdrop-filter: blur(10px);
         }
         
+        #timer {
+            background: rgba(255, 100, 100, 0.3);
+            font-weight: bold;
+        }
+        
+        #timer.warning {
+            animation: timerWarning 1s infinite;
+        }
+        
+        @keyframes timerWarning {
+            0% { background: rgba(255, 100, 100, 0.3); }
+            50% { background: rgba(255, 0, 0, 0.5); }
+            100% { background: rgba(255, 100, 100, 0.3); }
+        }
+        
+        @media (max-width: 480px) {
+            #score, #level, #timeBonus, #timer {
+                font-size: 16px;
+                padding: 6px 12px;
+            }
+        }
+        
         #combo {
-            font-size: 36px;
-            margin-top: 10px;
+            font-size: 28px;
+            margin-top: 5px;
             opacity: 0;
             transition: all 0.3s;
             transform: scale(0.8);
@@ -95,10 +127,11 @@
             justify-content: center;
             align-items: center;
             z-index: 20;
+            padding: 20px;
         }
         
         #startScreen h1 {
-            font-size: 48px;
+            font-size: clamp(32px, 8vw, 48px);
             color: #fff;
             margin-bottom: 20px;
             text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
@@ -106,7 +139,7 @@
         
         #startScreen p {
             color: #fff;
-            font-size: 18px;
+            font-size: clamp(14px, 3vw, 18px);
             margin-bottom: 30px;
             text-align: center;
             max-width: 600px;
@@ -118,7 +151,7 @@
             color: #fff;
             border: none;
             padding: 15px 40px;
-            font-size: 24px;
+            font-size: clamp(20px, 4vw, 24px);
             border-radius: 50px;
             cursor: pointer;
             transition: transform 0.3s;
@@ -132,7 +165,7 @@
             100% { transform: scale(1); }
         }
         
-        #startButton:hover {
+        #startButton:hover, #startButton:active {
             transform: scale(1.1);
             animation: none;
         }
@@ -158,24 +191,25 @@
             }
         }
         
-        #feverMode {
+        #eventMode {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 72px;
+            font-size: clamp(48px, 10vw, 72px);
             color: #fff;
             text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
             opacity: 0;
             pointer-events: none;
             z-index: 15;
+            white-space: nowrap;
         }
         
-        #feverMode.active {
-            animation: feverPulse 0.5s ease-out;
+        #eventMode.active {
+            animation: eventPulse 0.5s ease-out;
         }
         
-        @keyframes feverPulse {
+        @keyframes eventPulse {
             0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
             50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
@@ -183,10 +217,10 @@
         
         #progressBar {
             width: 100%;
-            height: 10px;
+            height: 8px;
             background: rgba(255, 255, 255, 0.3);
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 4px;
+            margin-top: 10px;
             overflow: hidden;
         }
         
@@ -197,49 +231,213 @@
             transition: width 0.3s;
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
+        
+        #bossHealthBar {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 400px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+            z-index: 11;
+        }
+        
+        #bossHealthFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff6b6b);
+            width: 100%;
+            transition: width 0.3s;
+        }
+        
+        #slotMachine {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 25;
+            text-align: center;
+        }
+        
+        #slotReels {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            font-size: 60px;
+        }
+        
+        .slotReel {
+            width: 80px;
+            height: 80px;
+            background: #fff;
+            border: 3px solid #ff6b6b;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            padding: 20px;
+        }
+        
+        #gameOverScreen h2 {
+            font-size: clamp(36px, 7vw, 48px);
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+        
+        #finalScore {
+            font-size: clamp(24px, 5vw, 36px);
+            color: #FFD700;
+            margin-bottom: 20px;
+        }
+        
+        #highScore {
+            font-size: clamp(18px, 4vw, 24px);
+            color: #fff;
+            margin-bottom: 30px;
+        }
+        
+        #restartButton {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            font-size: clamp(20px, 4vw, 24px);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        #restartButton:hover, #restartButton:active {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <div id="scoreContainer">
-            <div id="score">♪ 0</div>
-            <div id="level">Lv.1</div>
-            <div id="timeBonus">⏱ x1.0</div>
+    <div id="gameContainer">
+        <div id="ui">
+            <div id="scoreContainer">
+                <div id="score">♪ 0</div>
+                <div id="level">Lv.1</div>
+                <div id="timer">⏱ 60</div>
+                <div id="timeBonus">x1.0</div>
+            </div>
+            <div id="combo">COMBO x1</div>
+            <div id="progressBar">
+                <div id="progressFill"></div>
+            </div>
         </div>
-        <div id="combo">COMBO x1</div>
-        <div id="progressBar">
-            <div id="progressFill"></div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="bossHealthBar">
+            <div id="bossHealthFill"></div>
         </div>
-    </div>
-    
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    
-    <div id="feverMode">FEVER TIME!</div>
-    
-    <div id="startScreen">
-        <h1>🌸 夢の花園 🌸</h1>
-        <p>
-            音楽と花が織りなす不思議な世界へようこそ！<br>
-            花をクリックして美しいメロディーを奏でましょう。<br>
-            同じ色の花を続けてクリックするとコンボボーナス！<br>
-            レベルアップでスピードアップ！フィーバータイムを狙え！
-        </p>
-        <button id="startButton">はじめる</button>
+        
+        <div id="eventMode">FEVER TIME!</div>
+        
+        <div id="slotMachine">
+            <h2>🎰 ボーナスチャンス！ 🎰</h2>
+            <div id="slotReels">
+                <div class="slotReel" id="reel1">🌸</div>
+                <div class="slotReel" id="reel2">🌸</div>
+                <div class="slotReel" id="reel3">🌸</div>
+            </div>
+            <button id="slotButton">SPIN!</button>
+            <p id="slotResult"></p>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h2>🎮 GAME OVER 🎮</h2>
+            <div id="finalScore">最終スコア: 0</div>
+            <div id="highScore">ハイスコア: 0</div>
+            <button id="restartButton">もう一度プレイ</button>
+        </div>
+        
+        <div id="startScreen">
+            <h1>🌸 夢の花園 🌸</h1>
+            <p>
+                60秒間の音楽バトル！<br>
+                花をタップして美しいメロディーを奏でましょう。<br>
+                ボスやスロットも登場！最高スコアを目指せ！
+            </p>
+            <button id="startButton">はじめる</button>
+        </div>
     </div>
 
     <script>
+        // Canvas setup
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // Responsive canvas sizing
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const maxWidth = 800;
+            const maxHeight = 600;
+            const ratio = Math.min(
+                container.clientWidth / maxWidth,
+                container.clientHeight / maxHeight,
+                1
+            );
+            
+            canvas.width = maxWidth * ratio;
+            canvas.height = maxHeight * ratio;
+            canvas.style.width = canvas.width + 'px';
+            canvas.style.height = canvas.height + 'px';
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // UI elements
         const scoreEl = document.getElementById('score');
         const comboEl = document.getElementById('combo');
         const levelEl = document.getElementById('level');
+        const timerEl = document.getElementById('timer');
         const timeBonusEl = document.getElementById('timeBonus');
         const progressFill = document.getElementById('progressFill');
-        const feverModeEl = document.getElementById('feverMode');
+        const eventModeEl = document.getElementById('eventMode');
         const startScreen = document.getElementById('startScreen');
         const startButton = document.getElementById('startButton');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreEl = document.getElementById('finalScore');
+        const highScoreEl = document.getElementById('highScore');
+        const restartButton = document.getElementById('restartButton');
+        const bossHealthBar = document.getElementById('bossHealthBar');
+        const bossHealthFill = document.getElementById('bossHealthFill');
+        const slotMachine = document.getElementById('slotMachine');
+        const slotButton = document.getElementById('slotButton');
         
+        // Game state
         let score = 0;
+        let highScore = 0; // localStorageを使わない
         let combo = 1;
         let level = 1;
         let experience = 0;
@@ -252,6 +450,11 @@
         let lastClickTime = Date.now();
         let timeBonus = 1;
         let gameSpeed = 1;
+        let bossMode = false;
+        let bossHealth = 100;
+        let slotMode = false;
+        let timeRemaining = 60;
+        let timerInterval;
         
         // Audio context
         let audioContext;
@@ -270,14 +473,14 @@
         
         // Flower types
         const flowerTypes = [
-            { color: '#ff6b6b', note: 'C', name: '桜', points: 10 },
-            { color: '#4ecdc4', note: 'D', name: '水仙', points: 15 },
-            { color: '#ffe66d', note: 'E', name: 'ひまわり', points: 20 },
-            { color: '#a8e6cf', note: 'F', name: '紫陽花', points: 25 },
-            { color: '#ff8b94', note: 'G', name: 'チューリップ', points: 30 },
-            { color: '#c7ceea', note: 'A', name: 'ラベンダー', points: 35 },
-            { color: '#ffd3b6', note: 'B', name: 'コスモス', points: 40 },
-            { color: '#ffaaa5', note: 'C2', name: 'バラ', points: 50 }
+            { color: '#ff6b6b', note: 'C', name: '桜', points: 10, emoji: '🌸' },
+            { color: '#4ecdc4', note: 'D', name: '水仙', points: 15, emoji: '🌼' },
+            { color: '#ffe66d', note: 'E', name: 'ひまわり', points: 20, emoji: '🌻' },
+            { color: '#a8e6cf', note: 'F', name: '紫陽花', points: 25, emoji: '💐' },
+            { color: '#ff8b94', note: 'G', name: 'チューリップ', points: 30, emoji: '🌷' },
+            { color: '#c7ceea', note: 'A', name: 'ラベンダー', points: 35, emoji: '🌺' },
+            { color: '#ffd3b6', note: 'B', name: 'コスモス', points: 40, emoji: '🏵️' },
+            { color: '#ffaaa5', note: 'C2', name: 'バラ', points: 50, emoji: '🌹' }
         ];
         
         // Special flowers
@@ -286,35 +489,51 @@
             { color: '#E6E6FA', note: 'E', name: '虹の花', points: 200, special: true, emoji: '🌈' }
         ];
         
+        // Boss flower
+        const bossFlower = {
+            color: '#8B0000',
+            note: 'C',
+            name: 'ボスフラワー',
+            points: 500,
+            emoji: '👹',
+            isBoss: true
+        };
+        
         class Flower {
-            constructor(x, y, special = false) {
+            constructor(x, y, special = false, boss = false) {
                 this.x = x;
                 this.y = y;
                 
-                if (special || (Math.random() < 0.05 && level > 2)) {
+                if (boss) {
+                    this.type = bossFlower;
+                    this.isBoss = true;
+                    this.isSpecial = false;
+                    this.health = 10;
+                } else if (special || (Math.random() < 0.05 && level > 2)) {
                     this.type = specialFlowers[Math.floor(Math.random() * specialFlowers.length)];
                     this.isSpecial = true;
+                    this.isBoss = false;
                 } else {
                     this.type = flowerTypes[Math.floor(Math.random() * flowerTypes.length)];
                     this.isSpecial = false;
+                    this.isBoss = false;
                 }
                 
                 this.size = 0;
-                this.targetSize = this.isSpecial ? 50 : (30 + Math.random() * 20);
+                this.targetSize = this.isBoss ? 80 : (this.isSpecial ? 50 : (30 + Math.random() * 20));
                 this.rotation = Math.random() * Math.PI * 2;
                 this.rotationSpeed = (Math.random() - 0.5) * 0.02;
-                this.petals = this.isSpecial ? 12 : (6 + Math.floor(Math.random() * 3));
+                this.petals = this.isBoss ? 16 : (this.isSpecial ? 12 : (6 + Math.floor(Math.random() * 3)));
                 this.alive = true;
                 this.growing = true;
                 this.glowEffect = 0;
-                this.lifetime = this.isSpecial ? 4000 : (3000 - level * 100 + Math.random() * 2000);
+                this.lifetime = this.isBoss ? 10000 : (this.isSpecial ? 4000 : (3000 - level * 100 + Math.random() * 2000));
                 this.createdAt = Date.now();
                 this.pulsePhase = Math.random() * Math.PI * 2;
             }
             
             update() {
-                // 自動消滅のタイミングをレベルに応じて早める
-                if (this.alive && Date.now() - this.createdAt > this.lifetime / gameSpeed) {
+                if (!this.isBoss && this.alive && Date.now() - this.createdAt > this.lifetime / gameSpeed) {
                     this.alive = false;
                 }
                 
@@ -346,13 +565,13 @@
                 ctx.rotate(this.rotation);
                 
                 let scale = 1;
-                if (this.isSpecial) {
+                if (this.isSpecial || this.isBoss) {
                     scale = 1 + Math.sin(this.pulsePhase) * 0.1;
                     ctx.scale(scale, scale);
                 }
                 
-                if (this.glowEffect > 0 || this.isSpecial) {
-                    ctx.shadowBlur = this.isSpecial ? 40 : (30 * this.glowEffect);
+                if (this.glowEffect > 0 || this.isSpecial || this.isBoss) {
+                    ctx.shadowBlur = this.isBoss ? 60 : (this.isSpecial ? 40 : (30 * this.glowEffect));
                     ctx.shadowColor = this.type.color;
                 }
                 
@@ -364,7 +583,7 @@
                     ctx.beginPath();
                     ctx.ellipse(0, -this.size * 0.5, this.size * 0.3, this.size * 0.6, 0, 0, Math.PI * 2);
                     
-                    if (this.isSpecial) {
+                    if (this.isSpecial || this.isBoss) {
                         const gradient = ctx.createRadialGradient(0, -this.size * 0.5, 0, 0, -this.size * 0.5, this.size * 0.6);
                         gradient.addColorStop(0, '#fff');
                         gradient.addColorStop(1, this.type.color);
@@ -383,10 +602,10 @@
                 
                 ctx.beginPath();
                 ctx.arc(0, 0, this.size * 0.3, 0, Math.PI * 2);
-                ctx.fillStyle = this.isSpecial ? this.type.color : '#fff';
+                ctx.fillStyle = this.isBoss ? '#000' : (this.isSpecial ? this.type.color : '#fff');
                 ctx.fill();
                 
-                if (this.isSpecial && this.size > 30) {
+                if ((this.isSpecial || this.isBoss) && this.size > 30) {
                     ctx.font = `${this.size * 0.4}px Arial`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
@@ -423,7 +642,7 @@
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
                 
-                oscillator.type = this.isSpecial ? 'triangle' : 'sine';
+                oscillator.type = this.isSpecial || this.isBoss ? 'triangle' : 'sine';
                 oscillator.frequency.setValueAtTime(notes[this.type.note], audioContext.currentTime);
                 
                 gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
@@ -436,6 +655,17 @@
                 oscillator.stop(audioContext.currentTime + 1);
                 
                 this.glowEffect = 1;
+            }
+            
+            takeDamage() {
+                if (this.isBoss) {
+                    this.health--;
+                    if (this.health <= 0) {
+                        this.alive = false;
+                        return true;
+                    }
+                }
+                return false;
             }
         }
         
@@ -504,6 +734,92 @@
             }
         }
         
+        function createBossFlower() {
+            bossMode = true;
+            bossHealth = 100;
+            bossHealthBar.style.display = 'block';
+            eventModeEl.textContent = 'BOSS BATTLE!';
+            eventModeEl.classList.add('active');
+            setTimeout(() => eventModeEl.classList.remove('active'), 500);
+            
+            const bossFlower = new Flower(canvas.width / 2, canvas.height / 2, false, true);
+            flowers.push(bossFlower);
+        }
+        
+        function showSlotMachine() {
+            if (timeRemaining < 5) return; // 残り時間が少ない時はスロットを出さない
+            
+            slotMode = true;
+            gameStarted = false;
+            slotMachine.style.display = 'block';
+        }
+        
+        const slotSymbols = ['🌸', '🌼', '🌻', '⭐', '🌈', '💎'];
+        
+        slotButton.addEventListener('click', () => {
+            slotButton.disabled = true;
+            const reels = [
+                document.getElementById('reel1'),
+                document.getElementById('reel2'),
+                document.getElementById('reel3')
+            ];
+            
+            let spins = 0;
+            const maxSpins = 20;
+            const results = [];
+            
+            const spinInterval = setInterval(() => {
+                reels.forEach((reel, index) => {
+                    if (spins < maxSpins - index * 5) {
+                        reel.textContent = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                    } else if (results[index]) {
+                        reel.textContent = results[index];
+                    } else {
+                        results[index] = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                        reel.textContent = results[index];
+                    }
+                });
+                
+                spins++;
+                
+                if (spins > maxSpins + 10) {
+                    clearInterval(spinInterval);
+                    
+                    let bonus = 0;
+                    if (results[0] === results[1] && results[1] === results[2]) {
+                        if (results[0] === '💎') {
+                            bonus = 10000;
+                            document.getElementById('slotResult').textContent = '💎 JACKPOT! +10000 💎';
+                        } else if (results[0] === '🌈') {
+                            bonus = 5000;
+                            document.getElementById('slotResult').textContent = '🌈 SUPER BONUS! +5000 🌈';
+                        } else {
+                            bonus = 2000;
+                            document.getElementById('slotResult').textContent = '🎉 BONUS! +2000 🎉';
+                        }
+                    } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+                        bonus = 500;
+                        document.getElementById('slotResult').textContent = '✨ Nice! +500 ✨';
+                    } else {
+                        bonus = 100;
+                        document.getElementById('slotResult').textContent = '参加賞 +100';
+                    }
+                    
+                    score += bonus;
+                    scoreEl.textContent = `♪ ${score}`;
+                    
+                    setTimeout(() => {
+                        slotMachine.style.display = 'none';
+                        gameStarted = true;
+                        slotMode = false;
+                        slotButton.disabled = false;
+                        document.getElementById('slotResult').textContent = '';
+                        gameLoop();
+                    }, 2000);
+                }
+            }, 100);
+        });
+        
         function createParticles(x, y, color, count = 10) {
             for (let i = 0; i < count; i++) {
                 particles.push(new Particle(x, y, color));
@@ -557,12 +873,27 @@
             experience = experience - experienceToNext;
             experienceToNext = Math.floor(experienceToNext * 1.5);
             levelEl.textContent = `Lv.${level}`;
-            gameSpeed = 1 + (level - 1) * 0.2; // スピードアップを強化
+            gameSpeed = 1 + (level - 1) * 0.2;
             
             const rect = canvas.getBoundingClientRect();
             showPowerUp(`LEVEL UP! Lv.${level}`, rect.left + canvas.width / 2, rect.top + canvas.height / 2);
             
-            // レベルアップボーナス
+            // ボスイベント（5レベルごと）
+            if (level % 5 === 0) {
+                createBossFlower();
+            }
+            
+            // レベルアップでボーナスタイム（+5秒）
+            if (level % 3 === 0 && !bossMode) {
+                timeRemaining += 5;
+                showPowerUp('⏱ TIME +5! ⏱', rect.left + canvas.width / 2, rect.top + canvas.height / 2 - 50);
+                
+                // スロットチャンス
+                if (timeRemaining > 10) {
+                    showSlotMachine();
+                }
+            }
+            
             for (let i = 0; i < 5; i++) {
                 setTimeout(() => createFlower(), i * 100);
             }
@@ -571,10 +902,11 @@
         function activateFeverMode() {
             feverMode = true;
             feverTimer = 300;
-            feverModeEl.classList.add('active');
+            eventModeEl.textContent = 'FEVER TIME!';
+            eventModeEl.classList.add('active');
             
             setTimeout(() => {
-                feverModeEl.classList.remove('active');
+                eventModeEl.classList.remove('active');
             }, 500);
             
             for (let i = 0; i < 5; i++) {
@@ -596,7 +928,72 @@
                 timeBonus = Math.max(timeBonus - 0.05, 1);
             }
             
-            timeBonusEl.textContent = `⏱ x${timeBonus.toFixed(1)}`;
+            timeBonusEl.textContent = `x${timeBonus.toFixed(1)}`;
+        }
+        
+        function updateTimer() {
+            if (timeRemaining <= 0) {
+                gameOver();
+                return;
+            }
+            
+            timeRemaining--;
+            timerEl.textContent = `⏱ ${timeRemaining}`;
+            
+            if (timeRemaining <= 10) {
+                timerEl.classList.add('warning');
+                // ラスト10秒は花の出現率アップ
+                if (Math.random() < 0.3) {
+                    createFlower();
+                }
+            }
+        }
+        
+        function gameOver() {
+            gameStarted = false;
+            clearInterval(timerInterval);
+            cancelAnimationFrame(animationId);
+            
+            finalScoreEl.textContent = `最終スコア: ${score}`;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('flowerGameHighScore', highScore);
+                finalScoreEl.textContent += ' 🎉 NEW RECORD! 🎉';
+            }
+            
+            highScoreEl.textContent = `ハイスコア: ${highScore}`;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        function resetGame() {
+            score = 0;
+            combo = 1;
+            level = 1;
+            experience = 0;
+            experienceToNext = 100;
+            lastColor = null;
+            feverMode = false;
+            feverTimer = 0;
+            bossMode = false;
+            bossHealth = 100;
+            slotMode = false;
+            timeRemaining = 60;
+            gameSpeed = 1;
+            timeBonus = 1;
+            
+            flowers = [];
+            particles = [];
+            
+            scoreEl.textContent = '♪ 0';
+            levelEl.textContent = 'Lv.1';
+            timerEl.textContent = '⏱ 60';
+            timeBonusEl.textContent = 'x1.0';
+            timerEl.classList.remove('warning');
+            progressFill.style.width = '0%';
+            comboEl.classList.remove('show', 'mega');
+            bossHealthBar.style.display = 'none';
+            slotMachine.style.display = 'none';
         }
         
         function drawBackground() {
@@ -608,6 +1005,14 @@
                 const hue = (Date.now() / 20) % 360;
                 gradient.addColorStop(0, `hsla(${hue}, 100%, 80%, 0.3)`);
                 gradient.addColorStop(1, `hsla(${hue + 60}, 100%, 70%, 0.3)`);
+                ctx.fillStyle = gradient;
+            } else if (bossMode) {
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 0,
+                    canvas.width / 2, canvas.height / 2, canvas.width / 2
+                );
+                gradient.addColorStop(0, 'rgba(139, 0, 0, 0.3)');
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0.3)');
                 ctx.fillStyle = gradient;
             } else {
                 const gradient = ctx.createRadialGradient(
@@ -625,7 +1030,7 @@
                 const alpha = (Math.sin(star.twinkle) + 1) / 2 * 0.6;
                 ctx.save();
                 ctx.globalAlpha = alpha;
-                ctx.fillStyle = feverMode ? '#FFD700' : '#fff';
+                ctx.fillStyle = feverMode ? '#FFD700' : (bossMode ? '#ff0000' : '#fff');
                 ctx.beginPath();
                 ctx.arc(star.x, star.y, star.size * (feverMode ? 1.5 : 1), 0, Math.PI * 2);
                 ctx.fill();
@@ -634,6 +1039,8 @@
         }
         
         function gameLoop() {
+            if (!gameStarted || slotMode) return;
+            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             drawBackground();
@@ -647,7 +1054,6 @@
             
             updateTimeBonus();
             
-            // 花の更新と描画
             flowers = flowers.filter(flower => {
                 const alive = flower.update();
                 if (alive) {
@@ -656,7 +1062,6 @@
                 return alive;
             });
             
-            // パーティクルの更新と描画
             particles = particles.filter(particle => {
                 const alive = particle.update();
                 if (alive) {
@@ -665,18 +1070,18 @@
                 return alive;
             });
             
-            // レベルに応じて花の生成を調整
-            const maxFlowers = Math.min(15 + level * 2, 30); // 最大30個まで
+            const maxFlowers = Math.min(15 + level * 2, 30);
             const spawnRate = feverMode ? 0.2 : (0.05 + level * 0.01);
             
-            if (flowers.length < maxFlowers && Math.random() < spawnRate) {
-                createFlower();
-            }
-            
-            // 最低限の花を保証
-            if (flowers.length < 5) {
-                for (let i = 0; i < 3; i++) {
+            if (!bossMode) {
+                if (flowers.length < maxFlowers && Math.random() < spawnRate) {
                     createFlower();
+                }
+                
+                if (flowers.length < 5) {
+                    for (let i = 0; i < 3; i++) {
+                        createFlower();
+                    }
                 }
             }
             
@@ -685,12 +1090,24 @@
             }
         }
         
-        canvas.addEventListener('click', (e) => {
-            if (!gameStarted) return;
+        function handleInteraction(e) {
+            if (!gameStarted || slotMode) return;
+            
+            e.preventDefault();
             
             const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+            let clientX, clientY;
+            
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            const mouseX = (clientX - rect.left) * (canvas.width / rect.width);
+            const mouseY = (clientY - rect.top) * (canvas.height / rect.height);
             
             let hitFlower = false;
             
@@ -698,25 +1115,53 @@
                 const flower = flowers[i];
                 if (flower.alive && flower.checkClick(mouseX, mouseY)) {
                     flower.playSound();
-                    flower.alive = false;
-                    hitFlower = true;
                     
-                    if (lastColor === flower.type.color) {
-                        combo++;
+                    if (flower.isBoss) {
+                        const defeated = flower.takeDamage();
+                        bossHealth -= 10;
+                        bossHealthFill.style.width = bossHealth + '%';
+                        
+                        if (defeated) {
+                            bossMode = false;
+                            bossHealthBar.style.display = 'none';
+                            updateScore(flower.type.points);
+                            showPowerUp(`BOSS DEFEATED! +${flower.type.points * combo}!`, clientX, clientY);
+                            createParticles(flower.x, flower.y, flower.type.color, 100);
+                            
+                            // ボス撃破ボーナス
+                            for (let j = 0; j < 10; j++) {
+                                setTimeout(() => {
+                                    flowers.push(new Flower(
+                                        100 + Math.random() * (canvas.width - 200),
+                                        100 + Math.random() * (canvas.height - 200),
+                                        true
+                                    ));
+                                }, j * 100);
+                            }
+                        } else {
+                            createParticles(flower.x, flower.y, flower.type.color, 20);
+                        }
                     } else {
-                        combo = 1;
+                        flower.alive = false;
+                        
+                        if (lastColor === flower.type.color) {
+                            combo++;
+                        } else {
+                            combo = 1;
+                        }
+                        lastColor = flower.type.color;
+                        
+                        updateScore(flower.type.points);
+                        
+                        const particleCount = flower.isSpecial ? 40 : 20;
+                        createParticles(flower.x, flower.y, flower.type.color, particleCount);
+                        
+                        if (flower.isSpecial) {
+                            showPowerUp(`+${flower.type.points * combo}!`, clientX, clientY);
+                        }
                     }
-                    lastColor = flower.type.color;
                     
-                    updateScore(flower.type.points);
-                    
-                    const particleCount = flower.isSpecial ? 40 : 20;
-                    createParticles(flower.x, flower.y, flower.type.color, particleCount);
-                    
-                    if (flower.isSpecial) {
-                        showPowerUp(`+${flower.type.points * combo}!`, e.clientX, e.clientY);
-                    }
-                    
+                    hitFlower = true;
                     lastClickTime = Date.now();
                     break;
                 }
@@ -726,13 +1171,21 @@
                 combo = 1;
                 timeBonus = 1;
             }
-        });
+        }
+        
+        // イベントリスナー（PC・スマホ両対応）
+        canvas.addEventListener('click', handleInteraction);
+        canvas.addEventListener('touchstart', handleInteraction);
         
         startButton.addEventListener('click', () => {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
+            resetGame();
             startScreen.style.display = 'none';
             gameStarted = true;
+            
+            // タイマー開始
+            timerInterval = setInterval(updateTimer, 1000);
             
             for (let i = 0; i < 8; i++) {
                 setTimeout(() => createFlower(), i * 100);
@@ -741,7 +1194,24 @@
             gameLoop();
         });
         
+        restartButton.addEventListener('click', () => {
+            gameOverScreen.style.display = 'none';
+            gameStarted = true;
+            resetGame();
+            
+            // タイマー開始
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => createFlower(), i * 100);
+            }
+            
+            gameLoop();
+        });
+        
+        // コンテキストメニュー無効化
         canvas.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
     </script>
 </body>
 </html>
